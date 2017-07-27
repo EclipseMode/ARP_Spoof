@@ -19,7 +19,7 @@ typedef struct arpheader{					/* 	Define ARP Header Struct	*/
 	uint16_t	operation;				//[                        o p e r a t i o n : 4 b y t e s                     ]
 	u_char		sender_hw_addr[__MACADDR_LEN__];	//[                        s e n d e r m a c : 4 b y t e s                     ]
 	u_char		sender_ip_addr[__IPADDR_LEN__];		//[                        s e n d e r i p   : 4 b y t e s                     ]
-	u_char		target_hw_addr[__MACADDR_LEN__];		//[                        t a r g e t m a c : 4 b y t e s                     ]
+	u_char		target_hw_addr[__MACADDR_LEN__];	//[                        t a r g e t m a c : 4 b y t e s                     ]
 	u_char		target_ip_addr[__IPADDR_LEN__];		//[                        t a r g e t i p   : 4 b y t e s                     ]
 }arphdr;
 

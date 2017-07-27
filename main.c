@@ -39,7 +39,7 @@ int main(int argc, char** argv){
 
 
 
-void parse_usr_mac_address(char* interface, arphdr* arp){	/*MAKE MAC ADDRESS STRING*/
+void parse_usr_mac_address(char* interface, arphdr* arp){			/*PARSE MAC ADDRESS*/
 	int fd;
 	struct ifreq ifr;
 	u_char* mac = NULL;;
@@ -55,7 +55,7 @@ void parse_usr_mac_address(char* interface, arphdr* arp){	/*MAKE MAC ADDRESS STR
 	close(fd);
 }
 
-void parse_usr_ip_address (char* interface, arphdr* arp){
+void parse_usr_ip_address (char* interface, arphdr* arp){			/*PARSE IP  ADDRESS*/
 	int fd;
 	struct ifreq ifr;
 	u_char* ip;
@@ -69,7 +69,7 @@ void parse_usr_ip_address (char* interface, arphdr* arp){
 	close(fd);
 }
 
-void parse_and_make_str(char* interface, arphdr* arp, arphdr_str* arp_str){
+void parse_and_make_str(char* interface, arphdr* arp, arphdr_str* arp_str){	/*MAKE IP / MAC STR*/
 	parse_usr_mac_address(interface, arp);
         sprintf(arp_str->sender_hw_addr,"%X:%X:%X:%X:%X:%X",arp->sender_hw_addr[0],arp->sender_hw_addr[1],arp->sender_hw_addr[2],arp->sender_hw_addr[3],arp->sender_hw_addr[4],arp->sender_hw_addr[5]);
         parse_usr_ip_address (interface, arp);
