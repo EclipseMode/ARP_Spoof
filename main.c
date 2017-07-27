@@ -1,25 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <pcap.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+
 #include <linux/if.h>
-#include <unistd.h>
-#include <pcap.h>
+
 #include <netdb.h>
+#include <net/ethernet.h>
+
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h>
+
 #include <arpa/inet.h>
 
 #include "arpheader.h"
-
-typedef enum { false, true} bool; 		/* Define Boolean Type	*/
-typedef struct strarphdr{
-	u_char sender_hw_addr[18];
-	u_char sender_ip_addr[16];
-}arphdr_str;
 
 void parse_usr_mac_address(char*,arphdr*);
 void parse_usr_ip_address (char*,arphdr*);
@@ -29,7 +29,6 @@ int main(int argc, char** argv){
 	arphdr arp;
 	arphdr_str arp_str;
 	char* interface = argv[1];
-	char ip[100] = "FUCK";
 
 	parse_and_make_str(interface, &arp, &arp_str);
 	printf("DEV : %s\n",interface);
@@ -43,8 +42,7 @@ int main(int argc, char** argv){
 void parse_usr_mac_address(char* interface, arphdr* arp){	/*MAKE MAC ADDRESS STRING*/
 	int fd;
 	struct ifreq ifr;
-	u_char* mac = NULL;
-	char ip[20];
+	u_char* mac = NULL;;
 
 	memset(&ifr, 0, sizeof(ifr));
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -53,7 +51,7 @@ void parse_usr_mac_address(char* interface, arphdr* arp){	/*MAKE MAC ADDRESS STR
 	ioctl(fd, SIOCGIFHWADDR, &ifr);
 	mac = (u_char*)ifr.ifr_hwaddr.sa_data;
 
-	for(int i = 0 ; i < 6 ; i++){arp->sender_hw_addr[i] = mac[i];}
+	for(int i = 0 ; i < __MACADDR_LEN__ ; i++){arp->sender_hw_addr[i] = mac[i];}
 	close(fd);
 }
 
@@ -61,12 +59,13 @@ void parse_usr_ip_address (char* interface, arphdr* arp){
 	int fd;
 	struct ifreq ifr;
 	u_char* ip;
+	const int IPADDR_START = 2;
 	
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
 	ifr.ifr_addr.sa_family = AF_INET;
 	strncpy(ifr.ifr_name,interface,IFNAMSIZ-1);
 	ioctl(fd,SIOCGIFADDR, &ifr);
-	for(int i = 2 ; i < 6 ; i++) arp->sender_ip_addr[i-2] = ifr.ifr_addr.sa_data[i];
+	for(int i = IPADDR_START ; i < IPADDR_START + __IPADDR_LEN__ ; i++) arp->sender_ip_addr[i-2] = ifr.ifr_addr.sa_data[i];
 	close(fd);
 }
 
