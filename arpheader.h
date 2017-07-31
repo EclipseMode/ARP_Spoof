@@ -12,6 +12,9 @@ typedef unsigned short u_short;
 
 #define __ETHERTYPE_ARP__ 0x0806
 
+#define __ARP_REQUEST__ 1
+#define __ARP_REPLY__ 2
+
 typedef struct ethheader{
 	uint8_t 	src_hw_addr[6];
 	uint8_t		dst_hw_addr[6];
@@ -24,10 +27,10 @@ typedef struct arpheader{					/* 	Define ARP Header Struct	*/
 	uint8_t		hw_addr_len;				//[h w a d d r l e n g t h : 2 b y t e s ]
 	uint8_t		proto_addr_len;				//[p t a d d r l e n g t h : 2 b y t e s ]
 	uint16_t 	operation;				//[                        o p e r a t i o n : 4 b y t e s                     ]
-	uint8_t		src_hw_addr;				//[                        s e n d e r m a c : 4 b y t e s                     ]
-	uint8_t		src_ip_addr;				//[                        s e n d e r i p   : 4 b y t e s                     
-	uint8_t		dst_hw_addr;				//[                        t a r g e t m a c : 4 b y t e s                     ]
-	uint8_t		dst_ip_addr;				//[                        t a r g e t i p   : 4 b y t e s                     ]
+	uint8_t		src_hw_addr[6];				//[                        s e n d e r m a c : 4 b y t e s                     ]
+	uint8_t		src_ip_addr[4];				//[                        s e n d e r i p   : 4 b y t e s                     
+	uint8_t		dst_hw_addr[6];				//[                        t a r g e t m a c : 4 b y t e s                     ]
+	uint8_t		dst_ip_addr[4];				//[                        t a r g e t i p   : 4 b y t e s                     ]
 }arphdr;
 
 typedef enum {false, true} bool;				/*	Define Boolean Type	*/
