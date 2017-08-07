@@ -21,7 +21,7 @@
 void parse_usr_mac_address(char*,char*);
 void parse_usr_ip_address (char*,struct in_addr*);
 void make_packet(u_char**, int*, int, struct in_addr, struct in_addr, u_char*, u_char*);
-int filtering(const u_char*, struct in_addr, uint16_t operation);
+int filtering(const u_char*,char*, struct in_addr, uint16_t operation, char*);
 int relay_filtering(const u_char*, u_char*, u_char*, u_char*, struct in_addr, struct in_addr, struct in_addr, int length);
 
 int main(int argc, char** argv){
@@ -36,11 +36,14 @@ int main(int argc, char** argv){
 	struct in_addr host_ip	;
 
 	u_char host_mac[6];
-
 	u_char send_mac[6];
+	u_char target_mac[6];
+
 	u_char* payload;
 	u_char* payload2;
+
 	const u_char* rcv_packet;
+	const u_char* rcv_packet2;
 
 	bpf_u_int32 inet;
 	bpf_u_int32 submask;
@@ -76,47 +79,65 @@ int main(int argc, char** argv){
 		
 	/* Capture ARP Reply */
 	while(pcap_next_ex(handle, &header, &rcv_packet)!=1);
-	if(filtering(rcv_packet,sender_ip, __ARP_REPLY__) == 1){
-		for(int i = 0,j = 6 ; i < 6 ; i++,j++){send_mac[i] = rcv_packet[j];}
+	if(filtering(rcv_packet,send_mac, sender_ip, __ARP_REPLY__, host_mac) == 1){
+		for(int i = 0, j = 6 ; i < 6 ; i++,j++){send_mac[i] = rcv_packet[j];}
 		printf("\n");
 		for(int i = 0 ; i < 5 ; i++) printf("%X : ", send_mac[i]);	
 		printf("%X\n",send_mac[5]);
 		
-		memset(payload,0,length);
 		make_packet(&payload, &length,__ARP_REPLY__,target_ip,sender_ip,host_mac,send_mac);
 		
 		while(pcap_sendpacket(handle,payload,length));	
 	}
 	
 	make_packet(&payload2, &length2, __ARP_REQUEST__, host_ip, target_ip, host_mac, target_mac);
+	for(int i = 0 ; i < length2 ; i++) printf("%x", payload2[i]);
+	printf("\n"0;
+	while(pcap_sendpacket(handle,payload2,length2));
+	while(pcap_next_ex(handle, &header, $rcv_packet2) != 1);
+	if(filtering(rcv_packet, target_mac, target_ip,  __ARP_REPLY__, host_mac) == 1)){
+		for(int i = 0, j = 6 ; i < 6 ; i++, j++){target_mac[i] = rcv_packet[j]}
+		printf("\n");
+		for(int i = 0 ; i < 5; i ++) printf("%X : ", target_mac[i]);
+		printf("%X\n",target_mac[5]);
+
+		make_packet(&payload2,&length2, __ARP_REPLY__, sender_ip,target_ip, host_mac, target_mac);
+		while(pcap_sendpacket(handle,payload2,length2));
+	}
+	
 	/* Capture Sender's Packet */
-	while(pcap_next_ex(handle, &header, &rcv_packet) != 1);
+	
+	while(1){
+		if(pcap_next_ex(handle, &header, &rcv_packet) == 1);
+		
+	}
 	
 }
 
-int filtering(const u_char* rcv_packet, struct in_addr sender_ip, uint16_t operation){
+int filtering(const u_char* rcv_packet,char sender_mac[], struct in_addr sender_ip, uint16_t operation, char host_mac[]){
 	struct ether_header *eth = (struct ether_header*)rcv_packet;
 	arphdr *arp = (arphdr*)(rcv_packet + sizeof(*eth));
-	if(eth->ether_type == htons(ETHERTYPE_ARP) && (arp->operation == htons(operation))){
-		for(int i = 0 ; i < 4 ; i++) printf("%ld ",arp->src_ip_addr[i]);
-		return 1;
+	if(eth->ether_type != htons(ETHERTYPE_ARP) || (arp->operation != htons(operation))){
+		return 0
 	}
-	else return 0;
+	
+	if(strncmp(eth->ether_dhost, host_mac, 6)) return 0;
+	
+	for(int i = 0 ; i < 4 ; i++) arp->src_ip_addr[i] == sender_ip[i] ? continue : return 0; 
+
+	for(int i = 0 ; i < 6 ; i++) sender_mac[i] = eth->ether_shost[i];
+
+	return 1;
 }
 
 int relay_filtering(const *u_char rcv_packet, u_char* host_mac, u_char* sender_mac, u_char* target_mac, struct in_addr* host_ip, struct in_addr* sender_ip, struct in_addr* target_ip,int length){
-	struct ether_header *eth = (struct ether_header*) rcv_packet;
+	struct ether_header *eth = (struct ether_header*)rcv_packet;
 	struct iphdr *iph = (struct iphdr*)(rcv_packet + sizeof(*eth));
 	unsigned short IP_HEADER_LENGTH = iph->ihl * 4;
-	struct tcphdr* tcph = (struct tcphdr*)(buf + IP_HEADER_LENGTH + sizeof(*eth));
-	arphdr *arp = (arphdr*)(rcv_packet + sizeof(*eth));
 	u_int8_t broadcast[6] = [0xff,0xff,0xff,0xff,0xff,0xff];
 	
-	// arp packet / sender -> host (mac)
-	if(eth->ether_type == htons(ETHERTYPE_ARP)&&(!strncmp(eth->ether_shost,sender_mac,6) && (!strncmp(eth->ether_dhost,host_mac,6)))){
-		memset(rcv_packet, 0, sizeof(rcv_packet));
-		make_packet(&rcv_packet, &length, 
-	}
+	
+	
 	
 }
 
