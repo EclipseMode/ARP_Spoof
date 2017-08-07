@@ -18,11 +18,14 @@
 
 #include "arpheader.h"
 
+#define SENDER_TO_HOST 1
+#define TARGET_TO_HOST 2
+
 void parse_usr_mac_address(char*,char*);
 void parse_usr_ip_address (char*,struct in_addr*);
 void make_packet(u_char**, int*, int, struct in_addr, struct in_addr, u_char*, u_char*);
-int filtering(const u_char*,char*, struct in_addr, uint16_t operation, char*);
-int relay_filtering(const u_char*, u_char*, u_char*, u_char*, struct in_addr, struct in_addr, struct in_addr, int length);
+int filtering(u_char*,char*, struct in_addr, uint16_t operation, char*);
+int relay_filtering(u_char*, u_char*, u_char*, u_char*, struct in_addr, struct in_addr, struct in_addr, int *length);
 
 int main(int argc, char** argv){
 	char  errbuf[PCAP_ERRBUF_SIZE];
@@ -42,8 +45,8 @@ int main(int argc, char** argv){
 	u_char* payload;
 	u_char* payload2;
 
-	const u_char* rcv_packet;
-	const u_char* rcv_packet2;
+	u_char* rcv_packet;
+	u_char* rcv_packet2;
 
 	bpf_u_int32 inet;
 	bpf_u_int32 submask;
@@ -89,14 +92,14 @@ int main(int argc, char** argv){
 		
 		while(pcap_sendpacket(handle,payload,length));	
 	}
-	
+	/*
 	make_packet(&payload2, &length2, __ARP_REQUEST__, host_ip, target_ip, host_mac, target_mac);
-	for(int i = 0 ; i < length2 ; i++) printf("%x", payload2[i]);
-	printf("\n"0;
+	for(int i = 0 ; i < length2 ; i++) printf("%x ", payload2[i]);
+	printf("\n");
 	while(pcap_sendpacket(handle,payload2,length2));
-	while(pcap_next_ex(handle, &header, $rcv_packet2) != 1);
-	if(filtering(rcv_packet, target_mac, target_ip,  __ARP_REPLY__, host_mac) == 1)){
-		for(int i = 0, j = 6 ; i < 6 ; i++, j++){target_mac[i] = rcv_packet[j]}
+	while(pcap_next_ex(handle, &header, rcv_packet2) != 1);
+	if(filtering(rcv_packet, target_mac, target_ip,  __ARP_REPLY__, host_mac) == 1){
+		for(int i = 0, j = 6 ; i < 6 ; i++, j++){target_mac[i] = rcv_packet[j];}
 		printf("\n");
 		for(int i = 0 ; i < 5; i ++) printf("%X : ", target_mac[i]);
 		printf("%X\n",target_mac[5]);
@@ -104,41 +107,76 @@ int main(int argc, char** argv){
 		make_packet(&payload2,&length2, __ARP_REPLY__, sender_ip,target_ip, host_mac, target_mac);
 		while(pcap_sendpacket(handle,payload2,length2));
 	}
-	
-	/* Capture Sender's Packet */
+	*/
+	/* Capture Sender's Packet 
 	
 	while(1){
-		if(pcap_next_ex(handle, &header, &rcv_packet) == 1);
+		if(pcap_next_ex(handle, &header, &rcv_packet) == 1){
+			int relay_case = relay_filtering(rcv_packet, host_mac, send_mac, target_mac, host_ip, sender_ip, target_ip, length);
+		switch(relay_case){
+			case 1:
+				for(int i = 0, j = 6 ; i < 6 ; i++, j++){
+					rcv_packet[i] = target_mac[i];
+					rcv_packet[j] = host_mac[i];
+				}
+				break;
+			case 2: 
+				for(int i = 0, j = 6 ; i < 6 ; i++, j++){
+					rcv_packet[i] = send_mac[i];
+					rcv_packet[j] = host_mac[i];
+				}
+				break;
+		}
+		while(1){
+			while(pcap_sendpacket(handle,rcv_packet,length));
+			}
+		}
 		
 	}
+	*/
 	
 }
 
-int filtering(const u_char* rcv_packet,char sender_mac[], struct in_addr sender_ip, uint16_t operation, char host_mac[]){
+int filtering(u_char* rcv_packet,char sender_mac[], struct in_addr sender_ip, uint16_t operation, char host_mac[]){
 	struct ether_header *eth = (struct ether_header*)rcv_packet;
 	arphdr *arp = (arphdr*)(rcv_packet + sizeof(*eth));
+	uint8_t src_ip_addr[4];
+	inet_ntop(AF_INET,(void*)&,&src_ip_addr);
 	if(eth->ether_type != htons(ETHERTYPE_ARP) || (arp->operation != htons(operation))){
-		return 0
+		printf("1\n");
+		return 0;
 	}
 	
-	if(strncmp(eth->ether_dhost, host_mac, 6)) return 0;
+	if(strncmp(eth->ether_dhost, host_mac, 6)){printf("2\n"); return 0;}
 	
-	for(int i = 0 ; i < 4 ; i++) arp->src_ip_addr[i] == sender_ip[i] ? continue : return 0; 
+	if(src_ip_addr != sender_ip.s_addr) {printf("%d\n%d\n",src_ip_addr, sender_ip);return 0;} 
 
 	for(int i = 0 ; i < 6 ; i++) sender_mac[i] = eth->ether_shost[i];
 
 	return 1;
 }
 
-int relay_filtering(const *u_char rcv_packet, u_char* host_mac, u_char* sender_mac, u_char* target_mac, struct in_addr* host_ip, struct in_addr* sender_ip, struct in_addr* target_ip,int length){
+int relay_filtering(u_char* rcv_packet, u_char host_mac[], u_char sender_mac[], u_char target_mac[], struct in_addr host_ip, struct in_addr sender_ip, struct in_addr target_ip,int* length){
 	struct ether_header *eth = (struct ether_header*)rcv_packet;
 	struct iphdr *iph = (struct iphdr*)(rcv_packet + sizeof(*eth));
-	unsigned short IP_HEADER_LENGTH = iph->ihl * 4;
-	u_int8_t broadcast[6] = [0xff,0xff,0xff,0xff,0xff,0xff];
+	length = iph->ihl * 4;
 	
-	
-	
-	
+	if(!strncmp(eth->ether_shost, sender_mac, 6) && !strncmp(eth->ether_dhost, host_mac, 6)){
+		int flag = 0;
+		uint32_t dest_addr;
+		inet_pton(AF_INET,iph->daddr,&dest_addr); 
+		if (dest_addr == target_ip.s_addr) return 1;
+	}
+
+	if(!strncmp(eth->ether_shost, target_mac, 6) && !strncmp(eth->ether_dhost, host_mac, 6)){
+		int flag = 0;
+		uint32_t dest_addr;
+		inet_pton(AF_INET, iph->daddr,&dest_addr);
+		if (dest_addr = sender_ip.s_addr) return 2;
+		else return 0;
+	}
+	return 0;
+		
 }
 
 void parse_usr_mac_address(char* interface, char mac_addr[]){			/*PARSE MAC ADDRESS*/
