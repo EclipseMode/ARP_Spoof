@@ -11,6 +11,7 @@ typedef unsigned short u_short;
 #define __IPADDR_LEN__ 4
 
 #define __ETHERTYPE_ARP__ 0x0806
+#define __ETHERTYPE_IP__ 0x0800
 
 #define __ARP_REQUEST__ 1
 #define __ARP_REPLY__ 2
